@@ -19,7 +19,7 @@ let browser
 		args: chromium.args,
 		defaultViewport: chromium.defaultViewport,
 		executablePath: exec_path,
-		headless: chromium.headless,
+		headless: true,
 	})
 })()
 
