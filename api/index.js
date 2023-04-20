@@ -11,15 +11,11 @@ const puppeteer = addExtra(chromium.puppeteer)
 puppeteer.use(StealthPlugin())
 let browser
 (async () => {
-	let exec_path = await chromium.executablePath
-	if (process.env.AWS_EXECUTION_ENV === undefined) {
-		exec_path = process.env.LOCAL_CHROMIUM;
-	}
 	browser = await puppeteer.launch({
 		args: chromium.args,
 		defaultViewport: chromium.defaultViewport,
-		executablePath: exec_path,
-		headless: true,
+		executablePath: await chromium.executablePath,
+		headless: chromium.headless,
 	})
 })()
 
