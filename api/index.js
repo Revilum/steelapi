@@ -4,14 +4,14 @@ const bodyParser = require('body-parser')
 const axios = require('axios')
 const path = require('path')
 const chromium = require('chrome-aws-lambda')
-const puppeteer = require('puppeteer-extra')
+const { addExtra } = require('puppeteer-extra')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 
+const puppeteer = addExtra(chromium.puppeteer)
 puppeteer.use(StealthPlugin())
 let browser
 (async () => {
 	let exec_path = await chromium.executablePath
-
 	if (process.env.AWS_EXECUTION_ENV === undefined) {
 		exec_path = process.env.LOCAL_CHROMIUM;
 	}
