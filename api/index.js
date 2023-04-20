@@ -21,7 +21,7 @@ let browser
 		executablePath: exec_path,
 		headless: chromium.headless,
 	})
-	})()
+})()
 
 const hltv = HLTV.createInstance({
 	loadPage: async (url) => {
