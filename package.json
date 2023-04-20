@@ -29,6 +29,6 @@
   },
   "homepage": "https://github.com/Revilum/steelapi#readme",
   "engines": {
-    "node": "18.x"
+    "node": "14.x"
   }
 }
