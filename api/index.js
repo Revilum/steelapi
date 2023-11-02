@@ -6,7 +6,10 @@ const { gotScraping } = require('got-scraping')
 const path = require('path')
 
 const hltv = HLTV.createInstance({
-	loadPage: (url) => gotScraping({ url }).then((res) => res.body)
+	loadPage: (url) => gotScraping.get({
+		url: url,
+		proxyUrl: process.env.PROXY_ADDR
+	}).then((page) => page.body)
 });
 
 const app = express()
