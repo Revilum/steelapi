@@ -8,7 +8,19 @@ const path = require('path')
 const hltv = HLTV.createInstance({
 	loadPage: (url) => gotScraping.get({
 		url: url,
-		proxyUrl: process.env.PROXY_ADDR
+		proxyUrl: process.env.PROXY_ADDR,
+		headerGeneratorOptions: {
+			browsers: [
+				{
+					name: 'chrome',
+					minVersion: 87,
+					maxVersion: 89
+				}
+			],
+			devices: ['desktop'],
+			locales: ['de-DE', 'en-US'],
+			operatingSystems: ['windows', 'linux'],
+		}
 	}).then((page) => page.body)
 });
 
