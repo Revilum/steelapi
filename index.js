@@ -1,9 +1,9 @@
-const express = require('express')
-const { HLTV } = require('hltv-next')
-const bodyParser = require('body-parser')
-const axios = require('axios')
-const { gotScraping } = require('got-scraping')
-const path = require('path')
+import express from 'express'
+import { HLTV } from 'hltv-next'
+import bodyParser from 'body-parser'
+import { gotScraping } from 'got-scraping'
+import path from 'path'
+import { MongoClient } from "mongodb"
 
 const hltv = HLTV.createInstance({
 	loadPage: (url) => gotScraping.get({
@@ -24,16 +24,18 @@ const hltv = HLTV.createInstance({
 	}).then((page) => page.body)
 });
 
+const mongoClient = new MongoClient(process.env.MONGO_URL)
+await mongoClient.connect()
+
 const app = express()
 app.use(bodyParser.json())
 
 async function reportError(err, func, opt) {
-	return (await axios.post(process.env.DEBUG_DOMAIN, {
+	return (await mongoClient.db("hltv").collection("errors").insertOne({
 		"error": err.toString(),
 		"function": func,
 		"options": opt
-	})).data
-	
+	})).insertedId
 }
 
 function createEndpoint(endpoint, func) {
@@ -48,7 +50,7 @@ function createEndpoint(endpoint, func) {
 	})
 }
 
-dict = {
+const dict = {
 	"/api/getMatch": hltv.getMatch,
 	"/api/getMatches": hltv.getMatches,
 	"/api/getMatchesStats": hltv.getMatchesStats,
