@@ -34,6 +34,7 @@ async function reportError(err, func, opt) {
 	return (await mongoClient.db("hltv").collection("errors").insertOne({
 		"error": err.toString(),
 		"function": func,
+		"createdAt": new Date(),
 		"options": opt
 	})).insertedId
 }
