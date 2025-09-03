@@ -1,27 +1,15 @@
 import express from 'express'
 import { HLTV } from 'hltv-next'
 import bodyParser from 'body-parser'
-import { gotScraping } from 'got-scraping'
 import path from 'path'
 import { MongoClient } from "mongodb"
+import axios from "axios";
 
 const hltv = HLTV.createInstance({
-	loadPage: (url) => gotScraping.get({
-		url: url,
-		proxyUrl: process.env.PROXY_ADDR,
-		headerGeneratorOptions: {
-			browsers: [
-				{
-					name: 'chrome',
-					minVersion: 87,
-					maxVersion: 89
-				}
-			],
-			devices: ['desktop'],
-			locales: ['de-DE', 'en-US'],
-			operatingSystems: ['windows', 'linux'],
-		}
-	}).then((page) => page.body)
+	loadPage: async (url) => (await axios.get(url, {proxy: {
+        host: process.env.PROXY_URL,
+        port: parseInt(process.env.PROXY_PORT)}
+    })).data
 });
 
 const mongoClient = new MongoClient(process.env.MONGO_URL)
