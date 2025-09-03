@@ -6,11 +6,15 @@ import { MongoClient } from "mongodb"
 import axios from "axios";
 
 const hltv = HLTV.createInstance({
-	loadPage: async (url) => (await axios.get(url, {proxy: {
-        host: process.env.PROXY_URL,
-        port: parseInt(process.env.PROXY_PORT)}
-    })).data
-});
+	loadPage: async (url) => {
+        (await axios.post(process.env.PROXY_URL, {
+            "cmd": "request.get",
+            "url": url,
+            "maxTimeout": 60000
+            }, {
+            headers: {"Content-Type": "application/json"}}
+        )).data
+}});
 
 const mongoClient = new MongoClient(process.env.MONGO_URL)
 await mongoClient.connect()
