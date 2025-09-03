@@ -23,6 +23,7 @@ const app = express()
 app.use(bodyParser.json())
 
 async function reportError(err, func, opt) {
+    console.error(err)
 	return (await mongoClient.db("hltv").collection("errors").insertOne({
 		"error": err.toString(),
 		"function": func,
