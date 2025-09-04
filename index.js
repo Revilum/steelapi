@@ -5,11 +5,39 @@ import path from 'path'
 import { MongoClient } from "mongodb"
 import axios from "axios";
 
+const FLARESOLVERR_SESSION = 'steelapi_session';
+async function initializeFlareSolverr() {
+    try {
+        console.log('Initializing FlareSolverr session...');
+
+        const sessionPayload = {
+            cmd: "sessions.create",
+            session: FLARESOLVERR_SESSION
+        }
+        if (process.env.PROXY_SERVER) {
+            sessionPayload.proxy = {url: process.env.PROXY_SERVER}
+        }
+
+        const response = await axios.post(process.env.FLARESOLVERR_URL, sessionPayload, {
+            headers: {"Content-Type": "application/json"}
+        });
+
+        if (response.data.status === 'ok') {
+            console.log(`FlareSolverr session '${FLARESOLVERR_SESSION}' created successfully`);
+        } else {
+            console.error('Failed to create FlareSolverr session:', response.data);
+        }
+    } catch (error) {
+        console.error('Error initializing FlareSolverr session:', error.message);
+    }
+}
+
 const hltv = HLTV.createInstance({
 	loadPage: async (url) => {
-        return (await axios.post(process.env.PROXY_URL, {
+        return (await axios.post(process.env.FLARESOLVERR_URL, {
             "cmd": "request.get",
             "url": url,
+            "session": FLARESOLVERR_SESSION,
             "maxTimeout": 60000
             }, {
             headers: {"Content-Type": "application/json"}}
@@ -72,6 +100,8 @@ const dict = {
 for (const [key, value] of Object.entries(dict)) {
 	createEndpoint(key, value)
 }
+
+await initializeFlareSolverr();
 
 app.listen(3000, () => {
 	console.log('Listening on port 3000...')
