@@ -5,7 +5,8 @@
     "express": "5.0.0",
     "got-scraping": "^3.2.13",
     "hltv-next": "^3.5.10",
-    "mongodb": "^6.15.0"
+    "mongodb": "^6.15.0",
+    "request": "^2.88.2"
   },
   "name": "steelapi",
   "description": "The API for the HLTV-discord-bridge",
