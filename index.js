@@ -7,13 +7,13 @@ import axios from "axios";
 
 const hltv = HLTV.createInstance({
 	loadPage: async (url) => {
-        (await axios.post(process.env.PROXY_URL, {
+        return (await axios.post(process.env.PROXY_URL, {
             "cmd": "request.get",
             "url": url,
             "maxTimeout": 60000
             }, {
             headers: {"Content-Type": "application/json"}}
-        )).data
+        )).data.solution.response
 }});
 
 const mongoClient = new MongoClient(process.env.MONGO_URL)
@@ -66,7 +66,7 @@ const dict = {
 	"/api/getPastEvents": hltv.getPastEvents,
 	"/api/getResults": hltv.getResults,
 	"/api/getNews": hltv.getNews,
-	"/api/getRssNews": hltv.getRssNews
+	"/api/getRssNews": HLTV.getRssNews
 }
 
 for (const [key, value] of Object.entries(dict)) {
