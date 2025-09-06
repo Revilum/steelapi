@@ -1,35 +1,50 @@
-import express from 'express'
+import express, {response} from 'express'
 import { HLTV } from 'hltv-next'
 import bodyParser from 'body-parser'
 import path from 'path'
 import { MongoClient } from "mongodb"
 import axios from "axios";
 
-const FLARESOLVERR_SESSION = 'steelapi_session';
+async function sendPayload(cmd, url = null) {
+    const payload = { cmd: cmd };
+    payload.maxTimeout = process.env.FLARESOLVERR_TIMEOUT;
+    if (process.env.PROXY_SERVER) {
+        payload.proxy = { url: process.env.PROXY_SERVER };
+    }
+
+    if (cmd === "sessions.create") {
+        payload.session = process.env.FLARESOLVERR_SESSION_NAME;
+    }
+    if (cmd === "request.get") {
+        payload.session = process.env.FLARESOLVERR_SESSION_NAME;
+        payload.url = url;
+    }
+
+    const response = await axios.post(process.env.FLARESOLVERR_URL, payload);
+    if (response.data.status !== 'ok') {
+        throw new Error(`${response.data.status} - ${response.data.message}`);
+    }
+    return response.data;
+}
+
 async function initializeFlareSolverr() {
     try {
         console.log('Initializing FlareSolverr session...');
 
-        const sessionPayload = {
-            cmd: "sessions.create",
-            session: FLARESOLVERR_SESSION
-        }
-        if (process.env.PROXY_SERVER) {
-            sessionPayload.proxy = {url: process.env.PROXY_SERVER}
-        }
+        const sessionList = await sendPayload("sessions.list");
+        const existingSession = sessionList.sessions.find(session => session.name === process.env.FLARESOLVERR_SESSION_NAME);
 
-        const response = await axios.post(process.env.FLARESOLVERR_URL, sessionPayload, {
-            headers: {"Content-Type": "application/json"}
-        });
-
-        if (response.data.status === 'ok') {
-            console.log(`FlareSolverr session '${FLARESOLVERR_SESSION}' created successfully`);
-        } else {
-            console.error('Failed to create FlareSolverr session:', response.data);
+        if (existingSession) {
+            console.log(`FlareSolverr session '${process.env.FLARESOLVERR_SESSION_NAME}' already exists.`);
+            return;
         }
+        await sendPayload("sessions.create");
+        console.log(`FlareSolverr session '${process.env.FLARESOLVERR_SESSION_NAME}' created successfully.`);
     } catch (error) {
         console.error('Error initializing FlareSolverr session:', error.message);
+        process.exit(1);
     }
+
 }
 
 const hltv = HLTV.createInstance({
@@ -37,7 +52,7 @@ const hltv = HLTV.createInstance({
         return (await axios.post(process.env.FLARESOLVERR_URL, {
             "cmd": "request.get",
             "url": url,
-            "session": FLARESOLVERR_SESSION,
+            "session": process.env.FLARESOLVERR_SESSION_NAME,
             "maxTimeout": 60000
             }, {
             headers: {"Content-Type": "application/json"}}
