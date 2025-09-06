@@ -1,4 +1,4 @@
-import express, {response} from 'express'
+import express from 'express'
 import { HLTV } from 'hltv-next'
 import bodyParser from 'body-parser'
 import path from 'path'
