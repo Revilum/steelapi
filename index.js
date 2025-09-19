@@ -3,60 +3,14 @@ import { HLTV } from 'hltv-next'
 import bodyParser from 'body-parser'
 import path from 'path'
 import { MongoClient } from "mongodb"
-import axios from "axios";
+import FlareSolverrSessionManager from './sessionManager.js';
 
-async function sendPayload(cmd, url = null) {
-    const payload = { cmd: cmd };
-    payload.maxTimeout = process.env.FLARESOLVERR_TIMEOUT;
-    if (process.env.PROXY_SERVER) {
-        payload.proxy = { url: process.env.PROXY_SERVER };
-    }
-
-    if (cmd === "sessions.create") {
-        payload.session = process.env.FLARESOLVERR_SESSION_NAME;
-    }
-    if (cmd === "request.get") {
-        payload.session = process.env.FLARESOLVERR_SESSION_NAME;
-        payload.url = url;
-    }
-
-    const response = await axios.post(process.env.FLARESOLVERR_URL, payload);
-    if (response.data.status !== 'ok') {
-        throw new Error(`${response.data.status} - ${response.data.message}`);
-    }
-    return response.data;
-}
-
-async function initializeFlareSolverr() {
-    try {
-        console.log('Initializing FlareSolverr session...');
-
-        const sessionList = await sendPayload("sessions.list");
-        const existingSession = sessionList.sessions.find(session => session.name === process.env.FLARESOLVERR_SESSION_NAME);
-
-        if (existingSession) {
-            console.log(`FlareSolverr session '${process.env.FLARESOLVERR_SESSION_NAME}' already exists.`);
-            return;
-        }
-        await sendPayload("sessions.create");
-        console.log(`FlareSolverr session '${process.env.FLARESOLVERR_SESSION_NAME}' created successfully.`);
-    } catch (error) {
-        console.error('Error initializing FlareSolverr session:', error.message);
-        process.exit(1);
-    }
-
-}
+// Initialize the session manager
+const sessionManager = new FlareSolverrSessionManager();
 
 const hltv = HLTV.createInstance({
 	loadPage: async (url) => {
-        return (await axios.post(process.env.FLARESOLVERR_URL, {
-            "cmd": "request.get",
-            "url": url,
-            "session": process.env.FLARESOLVERR_SESSION_NAME,
-            "maxTimeout": 60000
-            }, {
-            headers: {"Content-Type": "application/json"}}
-        )).data.solution.response
+        return await sessionManager.makeRequest(url);
 }});
 
 const mongoClient = new MongoClient(process.env.MONGO_URL)
@@ -116,7 +70,21 @@ for (const [key, value] of Object.entries(dict)) {
 	createEndpoint(key, value)
 }
 
-await initializeFlareSolverr();
+app.get('/api/sessions/stats', (req, res) => {
+    res.json(sessionManager.getStats());
+});
+
+process.on('SIGINT', async () => {
+    await sessionManager.destroyAllSessions();
+    await mongoClient.close();
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    await sessionManager.destroyAllSessions();
+    await mongoClient.close();
+    process.exit(0);
+});
 
 app.listen(3000, () => {
 	console.log('Listening on port 3000...')
