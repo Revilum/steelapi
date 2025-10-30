@@ -147,14 +147,18 @@ class FlareSolverrSessionManager extends EventEmitter {
     async destroyAllSessions() {
         console.log('Destroying all FlareSolverr sessions...');
 
-        for (const session of this.sessions) {
-            try {
-                await this.sendFlaresolverrRequest("sessions.destroy", session.id);
-                console.log(`Destroyed session: ${session.id}`);
-            } catch (error) {
-                console.error(`Failed to destroy session ${session.id}:`, error.message);
-            }
-        }
+        // Destroy all sessions in parallel for faster shutdown
+        const destroyPromises = this.sessions.map(session =>
+            this.sendFlaresolverrRequest("sessions.destroy", session.id)
+                .then(() => {
+                    console.log(`Destroyed session: ${session.id}`);
+                })
+                .catch((error) => {
+                    console.error(`Failed to destroy session ${session.id}:`, error.message);
+                })
+        );
+
+        await Promise.all(destroyPromises);
 
         this.sessions = [];
         this.initialized = false;
