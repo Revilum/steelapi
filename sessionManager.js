@@ -8,6 +8,8 @@ class FlareSolverrSessionManager extends EventEmitter {
         this.sessions = [];
         this.requestQueue = [];
         this.initialized = false;
+        this.requestTimeout = parseInt(process.env.FLARESOLVERR_TIMEOUT) || 60000; // 60 seconds default
+        this.queueTimeout = parseInt(process.env.QUEUE_TIMEOUT) || 30000; // 30 seconds default
     }
 
     async sendFlaresolverrRequest(cmd, sessionId = null, url = null) {
@@ -26,7 +28,8 @@ class FlareSolverrSessionManager extends EventEmitter {
         }
 
         const response = await axios.post(process.env.FLARESOLVERR_URL, payload, {
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
+            timeout: this.requestTimeout
         });
 
         if (response.data.status !== 'ok') {
@@ -41,21 +44,29 @@ class FlareSolverrSessionManager extends EventEmitter {
         this.initialized = true;
         console.log(`Initializing ${this.numSessions} FlareSolverr sessions...`);
 
+        // Create all sessions in parallel for faster initialization
+        const sessionPromises = [];
         for (let i = 0; i < this.numSessions; i++) {
             const sessionId = `session_${i}_${Date.now()}`;
-            try {
-                await this.sendFlaresolverrRequest("sessions.create", sessionId);
-                this.sessions.push({
-                    id: sessionId,
-                    inUse: false,
-                    createdAt: new Date()
-                });
-                console.log(`Created session: ${sessionId}`);
-            } catch (error) {
-                console.error(`Failed to create session ${sessionId}:`, error.message);
-            }
+            sessionPromises.push(
+                this.sendFlaresolverrRequest("sessions.create", sessionId)
+                    .then(() => {
+                        this.sessions.push({
+                            id: sessionId,
+                            inUse: false,
+                            createdAt: new Date()
+                        });
+                        console.log(`Created session: ${sessionId}`);
+                        return sessionId;
+                    })
+                    .catch((error) => {
+                        console.error(`Failed to create session ${sessionId}:`, error.message);
+                        return null;
+                    })
+            );
         }
 
+        await Promise.all(sessionPromises);
 
         console.log(`Session manager initialized with ${this.sessions.length} sessions`);
     }
@@ -72,7 +83,16 @@ class FlareSolverrSessionManager extends EventEmitter {
                 freeSession.inUse = true;
                 resolve(freeSession);
             } else {
-                this.requestQueue.push({ resolve, reject, timestamp: Date.now() });
+                // Add timeout for queued requests
+                const timeoutId = setTimeout(() => {
+                    const index = this.requestQueue.findIndex(item => item.timeoutId === timeoutId);
+                    if (index !== -1) {
+                        this.requestQueue.splice(index, 1);
+                        reject(new Error(`Request timeout: waited ${this.queueTimeout}ms in queue`));
+                    }
+                }, this.queueTimeout);
+
+                this.requestQueue.push({ resolve, reject, timestamp: Date.now(), timeoutId });
                 console.log(`Request queued. Queue length: ${this.requestQueue.length}`);
             }
         });
@@ -84,9 +104,13 @@ class FlareSolverrSessionManager extends EventEmitter {
             session.inUse = false;
 
             if (this.requestQueue.length > 0) {
-                const { resolve } = this.requestQueue.shift();
+                const queueItem = this.requestQueue.shift();
+                // Clear the timeout since we're processing this request now
+                if (queueItem.timeoutId) {
+                    clearTimeout(queueItem.timeoutId);
+                }
                 session.inUse = true;
-                resolve(session);
+                queueItem.resolve(session);
                 console.log(`Session ${sessionId} assigned to queued request. Queue length: ${this.requestQueue.length}`);
             }
         }

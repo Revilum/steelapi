@@ -13,20 +13,31 @@ const hltv = HLTV.createInstance({
         return await sessionManager.makeRequest(url);
 }});
 
-const mongoClient = new MongoClient(process.env.MONGO_URL)
+const mongoClient = new MongoClient(process.env.MONGO_URL, {
+	maxPoolSize: 10,
+	minPoolSize: 2,
+	maxIdleTimeMS: 30000,
+	serverSelectionTimeoutMS: 5000,
+	socketTimeoutMS: 45000
+})
 await mongoClient.connect()
 
 const app = express()
 app.use(bodyParser.json())
 
-async function reportError(err, func, opt) {
+function reportError(err, func, opt) {
     console.error(err)
-	return (await mongoClient.db("hltv").collection("errors").insertOne({
+	// Fire-and-forget error logging to avoid blocking the response
+	mongoClient.db("hltv").collection("errors").insertOne({
 		"error": err.toString(),
 		"function": func,
 		"createdAt": new Date(),
 		"options": opt
-	})).insertedId
+	}).then(result => result.insertedId).catch(logErr => {
+		console.error("Failed to log error to database:", logErr);
+	})
+	// Return a synchronous ID for immediate response
+	return Date.now().toString()
 }
 
 function createEndpoint(endpoint, func) {
@@ -35,7 +46,7 @@ function createEndpoint(endpoint, func) {
 			const response = await func(req.body)
 			res.json(response)
 		} catch (err) {
-			const errorId = await reportError(err, path.parse(endpoint).base, req.body)
+			const errorId = reportError(err, path.parse(endpoint).base, req.body)
 			res.status(400).send({error: err.toString(), id: errorId})
 		}
 	})
