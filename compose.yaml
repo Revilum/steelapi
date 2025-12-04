@@ -9,6 +9,13 @@ services:
       - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
       - TZ=Europe/Berlin
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G        # Maximum memory usage
+        reservations:
+          memory: 64M      # Reserved memory
+
     networks:
       - internal
 
@@ -23,6 +30,12 @@ services:
       - "3000:3000"
     depends_on:
       - flaresolverr
+    deploy:
+      resources:
+        limits:
+          memory: 1G        # Maximum memory usage
+        reservations:
+          memory: 64M      # Reserved memory
     restart: unless-stopped
     networks:
       - internal
