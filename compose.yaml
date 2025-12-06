@@ -12,9 +12,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G        # Maximum memory usage
+          memory: 2G        # Maximum memory usage
         reservations:
-          memory: 64M      # Reserved memory
+          memory: 128M      # Reserved memory
 
     networks:
       - internal
