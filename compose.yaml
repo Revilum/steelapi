@@ -9,13 +9,6 @@ services:
       - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
       - TZ=Europe/Berlin
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 2G        # Maximum memory usage
-        reservations:
-          memory: 128M      # Reserved memory
-
     networks:
       - internal
 
